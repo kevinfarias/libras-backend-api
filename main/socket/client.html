@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>WebSocket Client</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0"></script>
+
+</head>
+
+<body>
+
+    <button onclick="contactServer()">Click Here</button>
+
+    <div id="container">
+        <div id="greenSquare">
+
+        </div>
+        <video autoplay="true" id="videoElement">
+        
+        </video>
+       
+    </div>
+    <br/><br/><br/><br/>
+    <canvas id="canvas"></canvas>
+    <br/><br/><br/><br/>
+    <canvas id="canvasWithoutBackground"></canvas>
+    <br/><br/><br/>
+    <div id="result" class="glow">
+        
+    </div>
+</body>
+
+<script>
+
+    const socket = new WebSocket('ws://127.0.0.1:9999');
+
+socket.addEventListener('open', function (event) {
+
+    socket.send('Connection Established');
+
+});
+
+ 
+const resultData = document.querySelector("#result");
+socket.addEventListener('message', function (event) {
+
+    const str = event.data;
+    const parts = str.split(" Data received as: ");
+    const result = parts[parts.length - 1];
+
+    resultData.innerHTML = result;
+});
+
+
+const backgroundRemoval = async () => {
+    const canvas = document.querySelector('#canvas')
+
+    const net = await bodyPix.load({
+        architecture: 'ResNet50',
+        outputStride: 32,
+        quantBytes: 4
+    })
+    const segmentation = await net.segmentPerson(canvas, {
+        internalResolution: 'medium',
+        segmentationThreshold: 0.7,
+        scoreTreshold: 0.7
+    })
+
+    const ctx = canvas.getContext('2d')
+    const { data: imgData } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+    const newImg = ctx.createImageData(canvas.width, canvas.height)
+    const newImgData = newImg.data
+
+    segmentation.data.forEach((segment, i) => {
+        if (segment == 1) {
+        newImgData[i * 4] = imgData[i * 4]
+        newImgData[i * 4 + 1] = imgData[i * 4 + 1]
+        newImgData[i * 4 + 2] = imgData[i * 4 + 2]
+        newImgData[i * 4 + 3] = imgData[i * 4 + 3]
+        }
+    })
+
+    ctx.putImageData(newImg, 0, 0);
+    alert("aee");
+}
+
+const contactServer = () => {
+    socket.send("Initialize");
+}
+
+const video = document.querySelector("#videoElement");
+const canvas = document.querySelector('canvas');
+
+const width = 180;
+const height = 180;
+
+const widthFinal = 64;
+const heightFinal = 64;
+
+
+canvas.width = widthFinal;
+canvas.height = heightFinal;
+if (navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function (stream) {
+            video.srcObject = stream;
+
+            const sendInterval = setInterval(async () => {
+                canvas.getContext('2d').drawImage(video, 
+                    30, 30, // Start at 30/39 pixels from the left and the top of the image (crop),
+                    width, height, // "Get" a `50 * 50` (w * h) area from the source image (crop),
+                    0, 0, // Place the result at 0, 0 in the canvas,
+                    widthFinal, heightFinal  // With as width / height: 100 * 100 (scale)
+                );
+
+                // await backgroundRemoval();
+
+                const png = canvas.toDataURL();
+                socket.send(png)
+            }, 1000);
+        })
+        .catch(function (error) {
+            console.log("Something went wrong!");
+        });
+}
+</script>
+
+<script>
+    IMAGE_SRC = './img/8.jpg'
+
+    const loadImage = () => {
+        const img = new Image()
+        img.src = IMAGE_SRC
+
+        const canvas = document.querySelector('canvas')
+        const ctx = canvas.getContext('2d')
+
+        img.addEventListener('load', () => {
+            canvas.width = img.width
+            canvas.height = img.height
+            ctx.drawImage(img, 0, 0)
+            backgroundRemoval()
+        })
+    }
+</script>
+
+<style>
+    #container {
+        margin: 0px auto;
+        width: 500px;
+        height: 375px;
+        border: 10px #333 solid;
+        position: relative;
+    }
+    #videoElement {
+        width: 500px;
+        height: 375px;
+        background-color: #666;
+    }
+    #greenSquare {
+        border: 3px solid green;
+        height: 256px;
+        width: 256px;
+        position: absolute;
+        top: 30px;
+        left: 30px;
+    }
+</style>
+<style>
+    .glow {
+        font-size: 80px;
+        color: #fff;
+        text-align: center;
+        -webkit-animation: glow 1s ease-in-out infinite alternate;
+        -moz-animation: glow 1s ease-in-out infinite alternate;
+        animation: glow 1s ease-in-out infinite alternate;
+    }
+
+    @-webkit-keyframes glow {
+        from {
+            text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #e60073, 0 0 40px #e60073, 0 0 50px #e60073, 0 0 60px #e60073, 0 0 70px #e60073;
+        }
+        to {
+            text-shadow: 0 0 20px #fff, 0 0 30px #ff4da6, 0 0 40px #ff4da6, 0 0 50px #ff4da6, 0 0 60px #ff4da6, 0 0 70px #ff4da6, 0 0 80px #ff4da6;
+        }
+    }
+</style>
+</html>
