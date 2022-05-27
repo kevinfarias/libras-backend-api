@@ -29,7 +29,8 @@ async def handler(websocket, path):
                 img_src = os.path.abspath("./temp/img.png")
                 
                 with open(img_src, "wb") as fh:
-                    fh.write(base64.urlsafe_b64decode(data[22:]))
+                    # fh.write(base64.urlsafe_b64decode(data[22:]))
+                    fh.write(base64.urlsafe_b64decode(data))
 
                 img_text = predictor.predict(img_src)[1]
                 reply = f"{i}: Data received as: {img_text}!"

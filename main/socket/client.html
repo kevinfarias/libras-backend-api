@@ -42,25 +42,24 @@
 
 <script>
 
-    const socket = new WebSocket('ws://127.0.0.1:9999');
+    const socket = new WebSocket('ws://ec2-52-54-91-133.compute-1.amazonaws.com:9999');
 
-socket.addEventListener('open', function (event) {
+    socket.addEventListener('open', function (event) {
 
-    socket.send('Connection Established');
+        socket.send('Connection Established');
 
-});
+    });
 
- 
-const resultData = document.querySelector("#result");
-socket.addEventListener('message', function (event) {
+    
+    const resultData = document.querySelector("#result");
+    socket.addEventListener('message', function (event) {
 
-    const str = event.data;
-    const parts = str.split(" Data received as: ");
-    const result = parts[parts.length - 1];
+        const str = event.data;
+        const parts = str.split(" Data received as: ");
+        const result = parts[parts.length - 1];
 
-    resultData.innerHTML = result;
-});
-
+        resultData.innerHTML = result;
+    });
 
 const backgroundRemoval = async () => {
     const canvas = document.querySelector('#canvas')
